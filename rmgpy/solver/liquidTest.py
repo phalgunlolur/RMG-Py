@@ -17,8 +17,9 @@ from rmgpy.solver.liquid import LiquidReactor
 from rmgpy.solver.base import TerminationTime, TerminationConversion
 import rmgpy.constants as constants
 from rmgpy.chemkin import loadChemkinFile
-#for liquid phase
-from rmgpy.rmg import main, input
+from rmgpy.rmg.main import RMG
+
+
 
 ################################################################################
 
@@ -258,36 +259,25 @@ class LiquidReactorCheck(unittest.TestCase):
         From input file reading to information storage in liquid reactor object.
         """
          
-        testbis=main.RMG()
+        rmg = RMG()
         ##use the liquid phase example to load every input parameters
-        input=os.path.join("examples","rmg","liquid_phase_constSPC","input.py") #In order to work on every system, use of os.path
-        testbis.loadInput(input)
+        inp=os.path.join("examples","rmg","liquid_phase_constSPC","input.py") #In order to work on every system, use of os.path
         
+        rmg.initialize(inp, rmg.outputDirectory)
+
         #Might be better to use RMG.initialize function (as it is done with real generation) but cannot be used without altering other unitests.
         #So here are pasted the main steps from it to use the liquid reactor function "get_constSPCindices
-        for label, smiles in [('Ar','[Ar]'), ('He','[He]'), ('Ne','[Ne]'), ('N2','N#N')]:
-            molecule = Molecule().fromSMILES(smiles)
-            spec, isNew = testbis.reactionModel.makeNewSpecies(molecule, label=label, reactive=False)
-            if isNew:
-                testbis.initialSpecies.append(spec)
-                                    
-        for spec in testbis.initialSpecies:
-            if not spec.reactive:
-                testbis.reactionModel.enlarge(spec)
-        for spec in testbis.initialSpecies:
-            if spec.reactive:
-                testbis.reactionModel.enlarge(spec)
             
-        if testbis.solvent is not None:
+        if rmg.solvent is not None:
             ##call the function to identify indices in the solver
-            for index, reactionSystem in enumerate(testbis.reactionSystems):
+            for index, reactionSystem in enumerate(rmg.reactionSystems):
                     if reactionSystem.constSPCNames is not None: #if no constant species provided do nothing
-                        reactionSystem.get_constSPCIndices(testbis.reactionModel.core.species)        
+                        reactionSystem.get_constSPCIndices(rmg.reactionModel.core.species)        
                    
-        for index, reactionSystem in enumerate(testbis.reactionSystems):
+        for index, reactionSystem in enumerate(rmg.reactionSystems):
             self.assertIsNotNone(reactionSystem.constSPCNames,"""this input \"{0} \" contain constant SPC, reactor should contain its name and its indices after few steps""")
             self.assertIsNotNone(reactionSystem.constSPCIndices,"""this input \"{0} \" contain constant SPC, reactor should contain its corresponding indices in the core species array""")
-            self.assertIs(reactionSystem.constSPCNames[0],testbis.reactionModel.core.species[reactionSystem.constSPCIndices[0]].label,"The constant species name from reaction model and constantSPCnames has to be equals")            
+            self.assertIs(reactionSystem.constSPCNames[0],rmg.reactionModel.core.species[reactionSystem.constSPCIndices[0]].label,"The constant species name from reaction model and constantSPCnames has to be equals")            
             
     def test_corespeciesRate(self):
         "Test if a specific core species rate is equal to 0 over time"    
